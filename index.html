@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -106,21 +106,18 @@
   tr { transition: all 0.4s ease; }
   tr:hover { background: rgba(255,255,255,0.1); transform: scale(1.01); }
 
-  /* 🏆 Top 3 ranks (no glow now) */
+  /* 🏆 Top 3 ranks */
   .rank-1 td {
     color: var(--gold);
     font-weight: 700;
-    text-shadow: none !important;
   }
   .rank-2 td {
     color: var(--silver);
     font-weight: 600;
-    text-shadow: none !important;
   }
   .rank-3 td {
     color: var(--bronze);
     font-weight: 600;
-    text-shadow: none !important;
   }
 
   footer {
@@ -128,7 +125,6 @@
     opacity: 0.9;
     margin-bottom: 30px;
     font-size: 0.9rem;
-    font-family: 'Poppins', sans-serif;
   }
 
   .toggle-btn {
@@ -138,21 +134,24 @@
     background: rgba(0,0,0,0.3);
     color: #fff;
     border: 1px solid rgba(255,255,255,0.2);
-    padding: 10px 16px;
-    border-radius: 30px;
+    padding: 10px 14px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1.2rem;
     backdrop-filter: blur(5px);
     transition: all 0.4s ease;
     box-shadow: 0 0 10px rgba(255,255,255,0.2);
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .toggle-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
-
+  .toggle-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
 </style>
 </head>
 <body class="dark-mode">
-  <button class="toggle-btn" id="theme-toggle">☀️ Light Mode</button>
+  <button class="toggle-btn" id="theme-toggle">☀️</button>
   <h1>🏝️ Catan Leaderboard</h1>
 
   <div class="leaderboard">
@@ -175,39 +174,40 @@
 
         const lines = data.trim().split("\n");
         const headers = lines[0].split(",").map(h => h.trim());
-        const rows = lines.slice(1).map(r => r.split(","));
+        const rows = lines.slice(1).map(r => r.split(",").map(v => v.trim()));
 
-        const skipIndices = headers
-          .map((h, i) => /phone/i.test(h) ? i : null)
+        const nameIndex = headers.findIndex(h => /name/i.test(h));
+        const scoreIndices = headers
+          .map((h, i) => (/score/i.test(h) ? i : null))
           .filter(i => i !== null);
-        const visibleHeaders = headers.filter((_, i) => !skipIndices.includes(i));
-
-        const headerRow = document.getElementById("table-header");
-        headerRow.innerHTML = "<th>Rank</th>" + visibleHeaders.map(h => `<th>${h}</th>`).join("");
 
         const players = rows.map(row => {
-          const obj = {};
-          headers.forEach((h, i) => {
-            if (!skipIndices.includes(i)) obj[h] = row[i];
-          });
-          return obj;
+          const name = row[nameIndex] || "Unknown";
+          const scores = scoreIndices.map(i => parseFloat(row[i]) || 0).sort((a, b) => b - a);
+          const top3 = scores.slice(0, 3);
+          const totalScore = top3.reduce((a, b) => a + b, 0);
+          return { name, totalScore, top3 };
         });
 
-        const scoreKey = headers.find(h => /score/i.test(h)) || visibleHeaders[visibleHeaders.length - 1];
-        players.sort((a, b) => (parseFloat(b[scoreKey]) || 0) - (parseFloat(a[scoreKey]) || 0));
+        players.sort((a, b) => b.totalScore - a.totalScore);
+
+        const headerRow = document.getElementById("table-header");
+        headerRow.innerHTML = "<th>Rank</th><th>Name</th><th>Score</th>";
 
         const tbody = document.querySelector("#leaderboard-table tbody");
         tbody.innerHTML = "";
+
         players.forEach((p, i) => {
-          const crown = (i === 0) ? "👑" : (i === 1) ? "🥈" : (i === 2) ? "🥉" : "";
-          const rowHTML =
-            `<td>${i + 1}</td>` +
-            visibleHeaders
-              .map(h => `<td>${p[h] || ""}${h.toLowerCase() === "player" ? " " + crown : ""}</td>`)
-              .join("");
+          const rank = i + 1;
+          const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "";
+          const tooltip = `Top 3: ${p.top3.join(", ")} (Total: ${p.totalScore})`;
           const tr = document.createElement("tr");
-          tr.className = `rank-${i + 1}`;
-          tr.innerHTML = rowHTML;
+          tr.className = `rank-${rank}`;
+          tr.innerHTML = `
+            <td>${rank}</td>
+            <td>${p.name} ${crown}</td>
+            <td title="${tooltip}">${p.totalScore}</td>
+          `;
           tbody.appendChild(tr);
         });
 
@@ -220,12 +220,12 @@
     loadLeaderboard();
     setInterval(loadLeaderboard, 30000);
 
-    // 🌙 / ☀️ Theme toggle
+    // 🌙 / ☀️ Theme toggle (icon only)
     const toggleBtn = document.getElementById("theme-toggle");
     toggleBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
       const isDark = document.body.classList.contains("dark-mode");
-      toggleBtn.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+      toggleBtn.textContent = isDark ? "☀️" : "🌙";
     });
   </script>
 </body>
