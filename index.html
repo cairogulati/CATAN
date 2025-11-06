@@ -59,13 +59,15 @@
     inset: 0;
     z-index: -2;
   }
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4); /* 40% transparent black */
-  z-index: -1; /* keep it behind everything */
-}
+  
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: -1;
+  }
+
   h1 {
     text-align: center;
     margin: 50px 0 20px;
@@ -104,20 +106,21 @@ body::after {
   tr { transition: all 0.4s ease; }
   tr:hover { background: rgba(255,255,255,0.1); transform: scale(1.01); }
 
+  /* 🏆 Top 3 ranks (no glow now) */
   .rank-1 td {
     color: var(--gold);
     font-weight: 700;
-    text-shadow: none;
+    text-shadow: none !important;
   }
   .rank-2 td {
     color: var(--silver);
     font-weight: 600;
-    text-shadow: none;
+    text-shadow: none !important;
   }
   .rank-3 td {
     color: var(--bronze);
     font-weight: 600;
-    text-shadow: none;
+    text-shadow: none !important;
   }
 
   footer {
@@ -148,8 +151,8 @@ body::after {
 
 </style>
 </head>
-<body>
-  <button class="toggle-btn" id="theme-toggle">🌙 Dark Mode</button>
+<body class="dark-mode">
+  <button class="toggle-btn" id="theme-toggle">☀️ Light Mode</button>
   <h1>🏝️ Catan Leaderboard</h1>
 
   <div class="leaderboard">
@@ -162,7 +165,6 @@ body::after {
   <footer>✨ Last updated: <span id="update-time"></span></footer>
 
   <script>
-    // 🧠 Replace with your own published Google Sheet CSV URL
     const GOOGLE_SHEET_CSV_URL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vTe2PbXFjzjLBgwjIMQiwXnynRhglLmTubZzm8nQG8nibfo3kJqiR-tucGdMCr6Rm-5KBhhrySF2oVB/pub?output=csv";
 
@@ -175,17 +177,14 @@ body::after {
         const headers = lines[0].split(",").map(h => h.trim());
         const rows = lines.slice(1).map(r => r.split(","));
 
-        // Exclude phone number columns
         const skipIndices = headers
           .map((h, i) => /phone/i.test(h) ? i : null)
           .filter(i => i !== null);
         const visibleHeaders = headers.filter((_, i) => !skipIndices.includes(i));
 
-        // Table header
         const headerRow = document.getElementById("table-header");
         headerRow.innerHTML = "<th>Rank</th>" + visibleHeaders.map(h => `<th>${h}</th>`).join("");
 
-        // Convert to objects
         const players = rows.map(row => {
           const obj = {};
           headers.forEach((h, i) => {
@@ -194,11 +193,9 @@ body::after {
           return obj;
         });
 
-        // Sort by Score column (auto-detect)
         const scoreKey = headers.find(h => /score/i.test(h)) || visibleHeaders[visibleHeaders.length - 1];
         players.sort((a, b) => (parseFloat(b[scoreKey]) || 0) - (parseFloat(a[scoreKey]) || 0));
 
-        // Fill table
         const tbody = document.querySelector("#leaderboard-table tbody");
         tbody.innerHTML = "";
         players.forEach((p, i) => {
@@ -223,7 +220,7 @@ body::after {
     loadLeaderboard();
     setInterval(loadLeaderboard, 30000);
 
-    // 🌙 Dark mode toggle
+    // 🌙 / ☀️ Theme toggle
     const toggleBtn = document.getElementById("theme-toggle");
     toggleBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
@@ -233,6 +230,3 @@ body::after {
   </script>
 </body>
 </html>
-
-
-
