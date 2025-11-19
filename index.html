@@ -164,69 +164,82 @@
   <footer>✨ Last updated: <span id="update-time"></span></footer>
 
   <script>
-    const GOOGLE_SHEET_CSV_URL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTe2PbXFjzjLBgwjIMQiwXnynRhglLmTubZzm8nQG8nibfo3kJqiR-tucGdMCr6Rm-5KBhhrySF2oVB/pub?output=csv";
+  const GOOGLE_SHEET_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTe2PbXFjzjLBgwjIMQiwXnynRhglLmTubZzm8nQG8nibfo3kJqiR-tucGdMCr6Rm-5KBhhrySF2oVB/pub?output=csv";
 
-    async function loadLeaderboard() {
-      try {
-        const response = await fetch(GOOGLE_SHEET_CSV_URL + "&t=" + new Date().getTime());
-        const data = await response.text();
+  async function loadLeaderboard() {
+    try {
+      const response = await fetch(GOOGLE_SHEET_CSV_URL + "&t=" + new Date().getTime());
+      const data = await response.text();
 
-        const lines = data.trim().split("\n");
-        const headers = lines[0].split(",").map(h => h.trim());
-        const rows = lines.slice(1).map(r => r.split(",").map(v => v.trim()));
+      const lines = data.trim().split("\n");
+      const headers = lines[0].split(",").map(h => h.trim());
+      const rows = lines.slice(1).map(r => r.split(",").map(v => v.trim()));
 
-        const nameIndex = headers.findIndex(h => /name/i.test(h));
-        const scoreIndices = headers
-          .map((h, i) => (/score/i.test(h) ? i : null))
-          .filter(i => i !== null);
+      const nameIndex = headers.findIndex(h => /name/i.test(h));
+      const scoreIndices = headers
+        .map((h, i) => (/score/i.test(h) ? i : null))
+        .filter(i => i !== null);
 
-        const players = rows.map(row => {
-          const name = row[nameIndex] || "Unknown";
-          const scores = scoreIndices.map(i => parseFloat(row[i]) || 0).sort((a, b) => b - a);
-          const top3 = scores.slice(0, 3);
-          const totalScore = top3.reduce((a, b) => a + b, 0);
-          return { name, totalScore, top3 };
-        });
+      const players = rows.map(row => {
+        const name = row[nameIndex] || "Unknown";
+        const scores = scoreIndices.map(i => parseFloat(row[i]) || 0).sort((a, b) => b - a);
+        const top3 = scores.slice(0, 3);
+        const totalScore = top3.reduce((a, b) => a + b, 0);
+        return { name, totalScore, top3 };
+      });
 
-        players.sort((a, b) => b.totalScore - a.totalScore);
+      players.sort((a, b) => b.totalScore - a.totalScore);
 
-        const headerRow = document.getElementById("table-header");
-        headerRow.innerHTML = "<th>Rank</th><th>Name</th><th>Score</th>";
+      // 🆕 Tie-aware ranking
+      let currentRank = 1;
+      let previousScore = null;
+      let displayedRank = 1;
 
-        const tbody = document.querySelector("#leaderboard-table tbody");
-        tbody.innerHTML = "";
+      players.forEach((player, index) => {
+        if (player.totalScore !== previousScore) {
+          displayedRank = currentRank;
+        }
+        player.rank = displayedRank;
+        previousScore = player.totalScore;
+        currentRank++;
+      });
 
-        players.forEach((p, i) => {
-          const rank = i + 1;
-          const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "";
-          const tooltip = `Top 3: ${p.top3.join(", ")} (Total: ${p.totalScore})`;
-          const tr = document.createElement("tr");
-          tr.className = `rank-${rank}`;
-          tr.innerHTML = `
-            <td>${rank}</td>
-            <td>${p.name} ${crown}</td>
-            <td title="${tooltip}">${p.totalScore}</td>
-          `;
-          tbody.appendChild(tr);
-        });
+      const headerRow = document.getElementById("table-header");
+      headerRow.innerHTML = "<th>Rank</th><th>Name</th><th>Score</th>";
 
-        document.querySelector("#update-time").textContent = new Date().toLocaleString();
-      } catch (err) {
-        console.error("Error loading leaderboard:", err);
-      }
+      const tbody = document.querySelector("#leaderboard-table tbody");
+      tbody.innerHTML = "";
+
+      players.forEach((p) => {
+        const crown = p.rank === 1 ? "👑" : p.rank === 2 ? "🥈" : p.rank === 3 ? "🥉" : "";
+        const tooltip = `Top 3: ${p.top3.join(", ")} (Total: ${p.totalScore})`;
+        const tr = document.createElement("tr");
+        tr.className = `rank-${p.rank}`;
+        tr.innerHTML = `
+          <td>${p.rank}</td>
+          <td>${p.name} ${crown}</td>
+          <td title="${tooltip}">${p.totalScore}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelector("#update-time").textContent = new Date().toLocaleString();
+
+    } catch (err) {
+      console.error("Error loading leaderboard:", err);
     }
+  }
 
-    loadLeaderboard();
-    setInterval(loadLeaderboard, 30000);
+  loadLeaderboard();
+  setInterval(loadLeaderboard, 30000);
 
-    // 🌙 / ☀️ Theme toggle (icon only)
-    const toggleBtn = document.getElementById("theme-toggle");
-    toggleBtn.addEventListener("click", () => {
-      document.body.classList.toggle("dark-mode");
-      const isDark = document.body.classList.contains("dark-mode");
-      toggleBtn.textContent = isDark ? "☀️" : "🌙";
-    });
-  </script>
+  const toggleBtn = document.getElementById("theme-toggle");
+  toggleBtn.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    toggleBtn.textContent = isDark ? "☀️" : "🌙";
+  });
+</script>
 </body>
 </html>
