@@ -9,26 +9,52 @@
 @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Poppins:wght@400;600;700&display=swap');
 
 :root {
-  --bg1:#8B4513; --bg2:#C85A17; --bg3:#E9C46A; --bg4:#F4A261;
-  --text:#fff5e1; --glass:rgba(255,255,255,0.12);
-  --gold:#B8860B; --silver:#9C9C9C; --bronze:#CD7F32;
+  --text:#fff5e1;
+  --glass:rgba(255,255,255,0.12);
+  --gold:#B8860B;
+  --silver:#9C9C9C;
+  --bronze:#CD7F32;
 }
 
 body {
-  margin:0; font-family:'Poppins',sans-serif; color:var(--text);
-  background:linear-gradient(-45deg,var(--bg1),var(--bg2),var(--bg3),var(--bg4));
-  background-size:400% 400%; animation:gradientShift 20s ease infinite;
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  color:var(--text);
+  overflow-x:hidden;
 }
 
-@keyframes gradientShift {
-  0%{background-position:0% 50%;}
-  50%{background-position:100% 50%;}
-  100%{background-position:0% 50%;}
+/* 🌄 background */
+body::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  background:url('background.png') center/cover no-repeat;
+  z-index:-3;
+}
+
+/* 🪵 board overlay */
+body::after {
+  content:"";
+  position:fixed;
+  inset:0;
+  background:url('catan.png') center/contain repeat;
+  filter:blur(6px) brightness(0.6);
+  z-index:-2;
+}
+
+/* 🌫 overlay */
+.overlay {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  z-index:-1;
 }
 
 h1 {
-  text-align:center; margin:40px 0 10px;
+  text-align:center;
+  margin:40px 0 10px;
   font-family:'MedievalSharp',cursive;
+  font-size:3rem;
 }
 
 #previous-season {
@@ -37,26 +63,58 @@ h1 {
 }
 
 .leaderboard {
-  width:90%; max-width:900px;
+  width:90%;
+  max-width:900px;
   margin:0 auto 50px;
   background:var(--glass);
   border-radius:20px;
-  backdrop-filter:blur(10px);
+  backdrop-filter:blur(15px);
   overflow:hidden;
 }
 
 table { width:100%; border-collapse:collapse; }
-th,td { padding:14px; text-align:center; }
+th,td { padding:14px; text-align:center; cursor:pointer; }
 
 .rank-1 td { color:var(--gold); font-weight:700; }
 .rank-2 td { color:var(--silver); }
 .rank-3 td { color:var(--bronze); }
 
+/* 👤 player panel */
+#player-panel {
+  position:fixed;
+  right:20px;
+  top:80px;
+  width:280px;
+  background:rgba(0,0,0,0.85);
+  padding:15px;
+  border-radius:15px;
+  display:none;
+}
+
 footer { text-align:center; margin-bottom:20px; }
+
+/* 📱 mobile */
+@media (max-width:768px) {
+  h1 { font-size:2rem; }
+
+  .leaderboard { width:95%; }
+
+  th,td { padding:10px; font-size:0.9rem; }
+
+  #player-panel {
+    width:90%;
+    left:5%;
+    right:auto;
+    top:auto;
+    bottom:20px;
+  }
+}
 </style>
 </head>
 
 <body>
+
+<div class="overlay"></div>
 
 <h1>🏝️ Catan Leaderboard – April Season</h1>
 
@@ -76,6 +134,8 @@ footer { text-align:center; margin-bottom:20px; }
   </table>
 </div>
 
+<div id="player-panel"></div>
+
 <footer>Last updated: <span id="update-time"></span></footer>
 
 <script>
@@ -84,119 +144,181 @@ footer { text-align:center; margin-bottom:20px; }
 const APRIL_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTe2PbXFjzjLBgwjIMQiwXnynRhglLmTubZzm8nQG8nibfo3kJqiR-tucGdMCr6Rm-5KBhhrySF2oVB/pub?gid=1497877429&single=true&output=csv";
 const NOVEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTe2PbXFjzjLBgwjIMQiwXnynRhglLmTubZzm8nQG8nibfo3kJqiR-tucGdMCr6Rm-5KBhhrySF2oVB/pub?gid=0&single=true&output=csv";
 
-// 🔁 Generic CSV fetcher
+// 🔁 fetch CSV
 async function fetchCSV(url) {
   const res = await fetch(url + "&t=" + new Date().getTime());
   const text = await res.text();
 
   const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map(h => h.trim());
-  const rows = lines.slice(1).map(r => r.split(",").map(v => v.trim()));
+  const headers = lines[0].split(",").map(h=>h.trim());
+  const rows = lines.slice(1).map(r=>r.split(",").map(v=>v.trim()));
 
   return { headers, rows };
 }
 
-// 🏆 Load previous season (November)
+// 🏆 previous season
 async function loadPreviousSeason() {
   const { headers, rows } = await fetchCSV(NOVEMBER_SHEET_URL);
 
-  const nameIndex = headers.findIndex(h => /name/i.test(h));
-  const scoreIndex = headers.findIndex(h => /score/i.test(h));
+  const nameIndex = headers.findIndex(h=>/name/i.test(h));
+  const scoreIndex = headers.findIndex(h=>/score/i.test(h));
 
-  const players = rows.map(row => ({
-    name: row[nameIndex],
-    score: parseFloat(row[scoreIndex]) || 0
+  const players = rows.map(r=>({
+    name:r[nameIndex],
+    score:parseFloat(r[scoreIndex])||0
   }));
 
   players.sort((a,b)=>b.score-a.score);
   return players;
 }
 
-// 🎯 Placement bonus
+// 🎯 placement
 function getPlacementBonus(pos) {
-  if (pos === 1) return 3;
-  if (pos === 2) return 2;
-  if (pos === 3) return 1;
+  if (pos===1) return 3;
+  if (pos===2) return 2;
+  if (pos===3) return 1;
   return 0;
 }
 
-// 🚀 Main loader
+let playerStats = {};
+let matches = {};
+
+function getArchetype(p) {
+  if (p.armyCount > p.roadCount && p.armyCount >= 2) return "⚔️ Warlord";
+  if (p.roadCount > p.armyCount && p.roadCount >= 2) return "🚧 Road King";
+  if (p.totalVP / p.games >= 8) return "🧱 Builder";
+  return "🤝 Trader";
+}
+
+function showPlayer(name) {
+  const p = playerStats[name];
+
+  const winRate = ((p.wins/p.games)*100).toFixed(1);
+  const avgVP = (p.totalVP/p.games).toFixed(1);
+  const best = Math.max(...p.scores);
+
+  const h2h = Object.entries(p.opponents)
+    .map(([opp,rec])=>`${opp}: ${rec.wins}-${rec.losses}`)
+    .join("<br>");
+
+  const panel = document.getElementById("player-panel");
+
+  panel.innerHTML = `
+    <h3>${name}</h3>
+    <p>${getArchetype(p)}</p>
+    <p>Games: ${p.games}</p>
+    <p>Win Rate: ${winRate}%</p>
+    <p>Avg VP: ${avgVP}</p>
+    <p>Best Score: ${best}</p>
+    <p>🚧 ${p.roadCount} | 🛡 ${p.armyCount}</p>
+    <p><strong>Head-to-Head:</strong><br>${h2h}</p>
+    <button onclick="hidePanel()">Close</button>
+  `;
+
+  panel.style.display="block";
+}
+
+function hidePanel() {
+  document.getElementById("player-panel").style.display="none";
+}
+
+// 🚀 main
 async function loadLeaderboard() {
 
-  // 📊 Load April data
   const { headers, rows } = await fetchCSV(APRIL_SHEET_URL);
 
   const playersMap = {};
+  playerStats = {};
+  matches = {};
 
   rows.forEach(row => {
+    const matchId = row[headers.indexOf("Match_ID")];
     const name = row[headers.indexOf("Player_Name")];
-    const position = parseInt(row[headers.indexOf("Position")]) || 0;
-    const vp = parseInt(row[headers.indexOf("VP")]) || 0;
-    const road = parseInt(row[headers.indexOf("Longest_Road")]) || 0;
-    const army = parseInt(row[headers.indexOf("Largest_Army")]) || 0;
+    const position = parseInt(row[headers.indexOf("Position")])||0;
+    const vp = parseInt(row[headers.indexOf("VP")])||0;
+    const road = parseInt(row[headers.indexOf("Longest_Road")])||0;
+    const army = parseInt(row[headers.indexOf("Largest_Army")])||0;
 
     let total = vp + getPlacementBonus(position) + road + army;
 
-    // 🎭 Hidden Pure Victory Bonus
-    if (position === 1 && road === 0 && army === 0) {
-      total += 2;
-    }
+    // 🎭 hidden bonus
+    if (position===1 && road===0 && army===0) total+=2;
 
-    if (!playersMap[name]) {
-      playersMap[name] = {
-        name,
-        scores: [],
-        games: 0
-      };
-    }
+    // matches
+    if (!matches[matchId]) matches[matchId]=[];
+    matches[matchId].push({name,position,vp,road,army,total});
 
+    // players map
+    if (!playersMap[name]) playersMap[name]={name,scores:[],games:0};
     playersMap[name].scores.push(total);
-    playersMap[name].games += 1;
+    playersMap[name].games++;
+
   });
 
-  // 🔥 Best 5 games logic
-  const players = Object.values(playersMap).map(p => {
-    const topScores = p.scores.sort((a,b)=>b-a).slice(0,5);
-    const totalScore = topScores.reduce((a,b)=>a+b,0);
+  // stats
+  Object.values(matches).forEach(match=>{
+    match.forEach(player=>{
+      if (!playerStats[player.name]) {
+        playerStats[player.name]={
+          games:0,wins:0,totalVP:0,roadCount:0,armyCount:0,scores:[],opponents:{}
+        };
+      }
 
+      const p = playerStats[player.name];
+      p.games++;
+      p.totalVP+=player.vp;
+      p.scores.push(player.total);
+      if (player.position===1) p.wins++;
+      if (player.road) p.roadCount++;
+      if (player.army) p.armyCount++;
+
+      match.forEach(op=>{
+        if (op.name!==player.name) {
+          if (!p.opponents[op.name]) p.opponents[op.name]={wins:0,losses:0};
+          if (player.position<op.position) p.opponents[op.name].wins++;
+          else p.opponents[op.name].losses++;
+        }
+      });
+    });
+  });
+
+  const players = Object.values(playersMap).map(p=>{
+    const top = p.scores.sort((a,b)=>b-a).slice(0,5);
     return {
-      name: p.name,
-      totalScore,
-      games: p.games
+      name:p.name,
+      totalScore:top.reduce((a,b)=>a+b,0),
+      games:p.games
     };
   });
 
   players.sort((a,b)=>b.totalScore-a.totalScore);
 
-  // 🏆 Load previous season
-  const previousPlayers = await loadPreviousSeason();
-  const previousWinner = previousPlayers[0];
-  const top3 = previousPlayers.slice(0,3);
+  // previous
+  const prev = await loadPreviousSeason();
+  const winner = prev[0];
+  const top3 = prev.slice(0,3);
 
-  // 🎨 Render previous season
   document.getElementById("previous-season").innerHTML = `
     <div style="font-size:1.3rem;">
-      👑 <strong>Defending Champion:</strong> ${previousWinner.name} (November – Catan)
+      👑 <strong>Defending Champion:</strong> ${winner.name} (November – Catan)
     </div>
     <div style="opacity:0.8;">
       🥇 ${top3[0]?.name} | 🥈 ${top3[1]?.name} | 🥉 ${top3[2]?.name}
     </div>
   `;
 
-  // 🧾 Render leaderboard
-  const tbody = document.querySelector("#leaderboard-table tbody");
-  tbody.innerHTML = "";
+  const tbody=document.querySelector("tbody");
+  tbody.innerHTML="";
 
-  players.forEach((p, index) => {
+  players.forEach((p,i)=>{
+    const rank=i+1;
+    const badge=p.name===winner.name?"👑":"";
 
-    const rank = index + 1;
-    const isChampion = p.name === previousWinner.name;
-    const badge = isChampion ? "👑" : "";
+    const tr=document.createElement("tr");
+    tr.className=`rank-${rank}`;
+    tr.onclick=()=>showPlayer(p.name);
 
-    const tr = document.createElement("tr");
-    tr.className = `rank-${rank}`;
-
-    tr.innerHTML = `
+    tr.innerHTML=`
       <td>${rank}</td>
       <td>${p.name} ${badge}</td>
       <td>${p.totalScore}</td>
@@ -210,9 +332,8 @@ async function loadLeaderboard() {
     new Date().toLocaleString();
 }
 
-// 🔁 Auto refresh
 loadLeaderboard();
-setInterval(loadLeaderboard, 30000);
+setInterval(loadLeaderboard,30000);
 
 </script>
 
