@@ -242,7 +242,7 @@ async function loadLeaderboard() {
     let total = vp + getPlacementBonus(position) + road + army;
 
     // 🎭 hidden bonus
-    if (position===1 && road===0 && army===0) total+=2;
+    if (position===1 && road===0 && army===0) total+=3;
 
     // matches
     if (!matches[matchId]) matches[matchId]=[];
