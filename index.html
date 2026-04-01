@@ -238,11 +238,12 @@ async function loadLeaderboard() {
     const vp = parseInt(row[headers.indexOf("VP")])||0;
     const road = parseInt(row[headers.indexOf("Longest_Road")])||0;
     const army = parseInt(row[headers.indexOf("Largest_Army")])||0;
+    const dcvp = parseInt(row[headers.indexOf("dcvp")])||0;
 
     let total = vp + getPlacementBonus(position) + road + army;
 
     // 🎭 hidden bonus
-    if (position===1 && road===0 && army===0) total+=3;
+    if (position===1 && road===0 && army===0 && dcvp===0) total+=3;
 
     // matches
     if (!matches[matchId]) matches[matchId]=[];
