@@ -168,7 +168,7 @@ footer { text-align: center; padding: 20px; opacity: 0.6; font-size: 0.8rem; }
         <tr>
           <th>Rank</th>
           <th>Player</th>
-          <th>Score (Top 5)</th>
+          <th>Score (Top 3)</th>
           <th>Games Played</th>
         </tr>
       </thead>
@@ -288,7 +288,7 @@ async function loadLeaderboard() {
 
   const displayList = Object.values(playersMap).map(p => ({
     name: p.name,
-    total: p.scores.sort((a,b)=>b-a).slice(0,5).reduce((a,b)=>a+b,0),
+    total: p.scores.sort((a,b)=>b-a).slice(0,3).reduce((a,b)=>a+b,0),
     games: p.games
   })).sort((a,b)=>b.total-a.total);
 
