@@ -255,9 +255,17 @@ async function loadLeaderboard() {
     const vp = parseInt(row[headers.indexOf("VP")])||0;
     const road = parseInt(row[headers.indexOf("Longest_Road")])||0;
     const army = parseInt(row[headers.indexOf("Largest_Army")])||0;
+    const dcvp = parseInt(row[headers.indexOf("dcvp")])||0;
     
     let score = vp + (pos===1?3:pos===2?2:pos===3?1:0) + road + army;
-
+    if (
+        pos === 1 &&     // winner only
+        !road &&         // no longest road
+        !army &&         // no largest army
+        dcvp === 0       // no VP dev cards
+        ) {
+        score += 5;
+        }
     if (!matches[mId]) matches[mId]=[];
     matches[mId].push({name, pos, vp, road, army, score});
 
